@@ -1,8 +1,8 @@
-package com.pedidos360.notificaciones.consumer;
+package example.bakcend_notificaciones.consumer;
 
-import com.pedidos360.notificaciones.dto.UsuarioEventDto;
-import com.pedidos360.notificaciones.model.Notificacion;
-import com.pedidos360.notificaciones.repository.NotificacionRepository;
+import example.bakcend_notificaciones.dto.UsuarioEventDto;
+import example.bakcend_notificaciones.model.Notificacion;
+import example.bakcend_notificaciones.repository.NotificacionRepository;
 import com.rabbitmq.client.Channel;
 import lombok.RequiredArgsConstructor;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
