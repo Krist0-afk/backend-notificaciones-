@@ -1,6 +1,6 @@
 package example.bakcend_notificaciones.consumer;
 
-import example.bakcend_notificaciones.dto.UsuarioEventDto;
+import example.bakcend_notificaciones.dto.OrdenEventDto;
 import example.bakcend_notificaciones.model.Notificacion;
 import example.bakcend_notificaciones.repository.NotificacionRepository;
 import com.rabbitmq.client.Channel;
@@ -20,34 +20,31 @@ public class NotificacionConsumer {
 
     @RabbitListener(queues = "${rabbitmq.queue.principal}")
     public void procesarNotificacion(
-            UsuarioEventDto evento,
+            OrdenEventDto evento,
             Channel channel,
             @Header(AmqpHeaders.DELIVERY_TAG) long tag) throws IOException {
 
         try {
-            System.out.println("Enviando correo de bienvenida a: " + evento.correo());
+            System.out.println("Generando recibo de compra para: " + evento.usuarioEmail());
             
-            // Simulamos una regla de fallo: Si no hay correo, lanzamos excepción
-            if (evento.correo() == null || evento.correo().trim().isEmpty()) {
-                throw new IllegalArgumentException("Correo de usuario inválido o vacío");
+            if (evento.usuarioEmail() == null || evento.usuarioEmail().trim().isEmpty()) {
+                throw new IllegalArgumentException("Correo vacío");
             }
 
-            // Guardar historial exitoso
-            repository.save(new Notificacion(evento.correo(), "¡Bienvenido a Pedidos360!", "ENVIADO"));
+            String comprobante = "Tu orden #" + evento.ordenId() + " por $" + evento.total() + " fue procesada.";
+            repository.save(new Notificacion(evento.usuarioEmail(), comprobante, "ENVIADO"));
 
-            // Confirmación explícita (ACK): El mensaje se procesó correctamente
+            // ACK: Todo salió bien
             channel.basicAck(tag, false);
-            System.out.println("Notificación exitosa. ACK enviado a RabbitMQ.");
 
         } catch (Exception e) {
-            System.err.println("Falló el envío de notificación. Causa: " + e.getMessage());
+            System.err.println("Error procesando notificación: " + e.getMessage());
             
-            // Guardar historial de fallo
-            repository.save(new Notificacion(evento.correo(), "¡Bienvenido a Pedidos360!", "FALLIDO"));
+            String email = (evento != null && evento.usuarioEmail() != null) ? evento.usuarioEmail() : "Desc";
+            repository.save(new Notificacion(email, "Fallo orden #" + (evento != null ? evento.ordenId() : "N/A"), "FALLIDO"));
 
-            // Rechazo explícito (NACK) con requeue=false: Envía el mensaje a la DLQ
+            // NACK: Enviar a la DLQ
             channel.basicNack(tag, false, false);
-            System.err.println("NACK enviado. Mensaje derivado a la DLQ.");
         }
     }
 }
